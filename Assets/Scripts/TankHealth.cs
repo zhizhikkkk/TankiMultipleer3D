@@ -20,40 +20,45 @@ public class TankHealth : MonoBehaviourPun
     }
 
     [PunRPC]
-    public void TakeDamageRPC(int damage)
+    public void TakeDamageRPC(int damage, int attackerID)
     {
+        currentHealth -= damage;
+        UpdateHealthUI();
         Debug.Log($" {gameObject.name} получил {damage} урона! Текущее HP: {currentHealth}");
 
-        currentHealth -= damage;
+        if (currentHealth <= 0)
+        {
+            Die(attackerID);
+        }
+    }
 
+    void UpdateHealthUI()
+    {
         if (healthBar != null)
         {
             healthBar.value = currentHealth;
         }
-
-        if (currentHealth <= 0)
-        {
-            Die();
-        }
     }
 
 
-    void Die()
+    void Die(int attackerID)
     {
-        Debug.Log($" Танк {gameObject.name} уничтожен!");
+        Debug.Log($"Танк {gameObject.name} уничтожен!");
 
-        if (PhotonNetwork.IsMasterClient)
+        PhotonView attacker = PhotonView.Find(attackerID);
+        if (attacker != null && attacker.Owner != null)
         {
-            if (PhotonNetwork.PlayerList.Length == 1)
-            {
-                GameManager.Instance.GameOver(true);
-            }
-            else
-            {
-                GameManager.Instance.GameOver(false);
-            }
+            int currentScore = (int)attacker.Owner.CustomProperties["Score"];
+            ExitGames.Client.Photon.Hashtable newScore = new ExitGames.Client.Photon.Hashtable();
+            newScore["Score"] = currentScore + 10; 
+            attacker.Owner.SetCustomProperties(newScore);
         }
 
-        PhotonNetwork.Destroy(gameObject);
+        if (photonView.IsMine)
+        {
+            GameManager.Instance.OnPlayerDied();
+            PhotonNetwork.Destroy(gameObject);
+        }
     }
+
 }

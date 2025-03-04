@@ -15,15 +15,27 @@ public class TankSpawner : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
-        Debug.Log($" Подключились к комнате {PhotonNetwork.CurrentRoom.Name}");
-        Debug.Log($" Подключились к комнате {PhotonNetwork.CurrentRoom.Name} с {PhotonNetwork.PlayerList.Length} игроками.");
-    
         mainPanel.SetActive(false);
         Vector3 spawnPosition = GetValidSpawnPosition();
 
-        GameObject tank = PhotonNetwork.Instantiate("Tank", spawnPosition, Quaternion.identity);
-        StartCoroutine(WaitForOwnershipAndSetColor(tank));
+        if (!PhotonNetwork.LocalPlayer.CustomProperties.ContainsKey("TankSpawned") ||
+            !(bool)PhotonNetwork.LocalPlayer.CustomProperties["TankSpawned"])
+        {
+            GameObject tank = PhotonNetwork.Instantiate("Tank", spawnPosition, Quaternion.identity);
+            StartCoroutine(WaitForOwnershipAndSetColor(tank));
+
+            ExitGames.Client.Photon.Hashtable playerProperties = new ExitGames.Client.Photon.Hashtable();
+            playerProperties["TankSpawned"] = true;
+            PhotonNetwork.LocalPlayer.SetCustomProperties(playerProperties);
+        }
+        else
+        {
+            Debug.LogWarning("Этот игрок уже создал танк, не спавним новый.");
+        }
     }
+
+
+
 
     private IEnumerator WaitForOwnershipAndSetColor(GameObject tank)
     {

@@ -30,7 +30,7 @@ public class Projectile : MonoBehaviourPun
 
         if (targetPhotonView == null)
         {
-            Debug.LogError($" У объекта {other.gameObject.name} и его родителей нет PhotonView!");
+            Debug.Log($" У объекта {other.gameObject.name} и его родителей нет PhotonView!");
             return;
         }
 
@@ -38,10 +38,10 @@ public class Projectile : MonoBehaviourPun
 
         if (other.CompareTag("Tank"))
         {
-            Debug.Log($" Попадание в танк {other.gameObject.name}!");
-
-            targetPhotonView.RPC("TakeDamageRPC", RpcTarget.AllBuffered, damage);
+           targetPhotonView.RPC("TakeDamageRPC", RpcTarget.AllBuffered, damage, photonView.ViewID);
+            
         }
+
 
         PhotonNetwork.Destroy(gameObject);
     }
