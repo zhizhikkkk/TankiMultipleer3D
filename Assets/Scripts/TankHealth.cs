@@ -19,13 +19,12 @@ public class TankHealth : MonoBehaviourPun
         }
     }
 
-    public void TakeDamage(int damage)
+    [PunRPC]
+    public void TakeDamageRPC(int damage)
     {
-        if (!photonView.IsMine) return;
+        Debug.Log($" {gameObject.name} получил {damage} урона! Текущее HP: {currentHealth}");
 
         currentHealth -= damage;
-
-        Debug.Log($"Танк {gameObject.name} получил {damage} урона. Текущее HP: {currentHealth}"); 
 
         if (healthBar != null)
         {
@@ -38,17 +37,21 @@ public class TankHealth : MonoBehaviourPun
         }
     }
 
+
     void Die()
     {
-        Debug.Log($"Танк {gameObject.name} уничтожен!");
+        Debug.Log($" Танк {gameObject.name} уничтожен!");
 
-        if (PhotonNetwork.PlayerList.Length == 1)
+        if (PhotonNetwork.IsMasterClient)
         {
-            GameManager.Instance.GameOver(true);
-        }
-        else
-        {
-            GameManager.Instance.GameOver(false);
+            if (PhotonNetwork.PlayerList.Length == 1)
+            {
+                GameManager.Instance.GameOver(true);
+            }
+            else
+            {
+                GameManager.Instance.GameOver(false);
+            }
         }
 
         PhotonNetwork.Destroy(gameObject);

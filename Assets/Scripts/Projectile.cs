@@ -11,9 +11,10 @@ public class Projectile : MonoBehaviourPun
 
     void Start()
     {
-        initialPosition = transform.position; 
+        initialPosition = transform.position;
         GetComponent<Rigidbody>().velocity = transform.forward * speed;
         Destroy(gameObject, lifetime);
+        Debug.Log($" Пуля запущена. IsMine: {photonView.IsMine}");
     }
 
     void FixedUpdate()
@@ -23,24 +24,28 @@ public class Projectile : MonoBehaviourPun
 
     void OnTriggerEnter(Collider other)
     {
-        Debug.Log("Udar");
-        if (!photonView.IsMine) return;
+        Debug.Log($" Проверка коллизии с {other.gameObject.name}. IsMine: {photonView.IsMine}");
+
+        PhotonView targetPhotonView = other.GetComponentInParent<PhotonView>();
+
+        if (targetPhotonView == null)
+        {
+            Debug.LogError($" У объекта {other.gameObject.name} и его родителей нет PhotonView!");
+            return;
+        }
+
+        Debug.Log($" Найден PhotonView у {other.gameObject.name}, ViewID: {targetPhotonView.ViewID}");
 
         if (other.CompareTag("Tank"))
         {
-            Debug.Log($"Попадание в танк {other.gameObject.name}!");
-            other.GetComponent<TankHealth>().TakeDamage(damage);
-            PhotonNetwork.Destroy(gameObject);
+            Debug.Log($" Попадание в танк {other.gameObject.name}!");
+
+            targetPhotonView.RPC("TakeDamageRPC", RpcTarget.AllBuffered, damage);
         }
-        else if (other.CompareTag("Wall"))
-        {
-            Debug.Log("Пуля ударилась о стену!");
-           
-            PhotonNetwork.Destroy(gameObject);
-        }
-        else
-        {
-            PhotonNetwork.Destroy(gameObject);
-        }
+
+        PhotonNetwork.Destroy(gameObject);
     }
+
+
+
 }

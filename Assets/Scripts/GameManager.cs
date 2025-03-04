@@ -27,8 +27,9 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     void LeaveGame()
     {
+        mainPanel.SetActive(true);
         gameOverPanel.SetActive(false);
         PhotonNetwork.LeaveRoom();
-        mainPanel.SetActive(true);
+        
     }
 }

@@ -16,7 +16,8 @@ public class TankSpawner : MonoBehaviourPunCallbacks
     public override void OnJoinedRoom()
     {
         Debug.Log($" Подключились к комнате {PhotonNetwork.CurrentRoom.Name}");
-
+        Debug.Log($" Подключились к комнате {PhotonNetwork.CurrentRoom.Name} с {PhotonNetwork.PlayerList.Length} игроками.");
+    
         mainPanel.SetActive(false);
         Vector3 spawnPosition = GetValidSpawnPosition();
 
