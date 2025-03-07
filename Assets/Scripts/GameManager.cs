@@ -1,23 +1,24 @@
-using Photon.Pun;
-using Photon.Realtime;
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
-using System.Collections;
+using Photon.Pun;
 
-public class GameManager : MonoBehaviourPunCallbacks
+public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
 
     [Header("UI Panels")]
-    public GameObject namePanel;
-    public GameObject mainPanel;
-    public GameObject gameOverPanel;
+    [SerializeField] private GameObject namePanel;
+    [SerializeField] private GameObject modeSelectionPanel;
+    [SerializeField] private GameObject mainPanel;
     public GameObject gameUI;
+    [SerializeField] private GameObject gameOverPanel;
 
     [Header("UI Elements")]
-    public TMP_InputField nameInput;
-    public TextMeshProUGUI gameOverText;
+    [SerializeField] private TMP_InputField nameInput;
+    [SerializeField] private TextMeshProUGUI gameOverText;
+    [SerializeField] private TextMeshProUGUI ammoText; 
+
+    private int enemyKillCount = 0;
 
     private void Awake()
     {
@@ -33,6 +34,7 @@ public class GameManager : MonoBehaviourPunCallbacks
     private void ShowNameInputPanel()
     {
         namePanel.SetActive(true);
+        modeSelectionPanel.SetActive(false);
         mainPanel.SetActive(false);
         gameOverPanel.SetActive(false);
         gameUI.SetActive(false);
@@ -43,109 +45,40 @@ public class GameManager : MonoBehaviourPunCallbacks
         string playerName = nameInput.text.Trim();
         if (string.IsNullOrEmpty(playerName)) return;
 
-        PhotonNetwork.NickName = playerName;
-
+        modeSelectionPanel.SetActive(true);
         namePanel.SetActive(false);
-        mainPanel.SetActive(true);
     }
 
-    public void OnCreateRoomClicked()
+    public void OnSinglePlayerClicked()
     {
-        if (!PhotonNetwork.IsConnected)
-        {
-            PhotonNetwork.ConnectUsingSettings();
-        }
-        else
-        {
-            PhotonNetwork.CreateRoom("Room_" + Random.Range(1000, 9999), new RoomOptions { MaxPlayers = 4 });
-        }
-
-        mainPanel.SetActive(false);
+        modeSelectionPanel.SetActive(false);
+        SinglePlayerManager.Instance.StartGame();
     }
 
-    public void OnJoinRoomClicked()
+    public void IncreaseKillCount()
     {
-        if (!PhotonNetwork.IsConnected)
-        {
-            PhotonNetwork.ConnectUsingSettings();
-        }
-        else
-        {
-            PhotonNetwork.JoinRandomRoom();
-        }
-
-        mainPanel.SetActive(false);
+        enemyKillCount++;
     }
 
-    public override void OnConnectedToMaster()
+    public void UpdateAmmoUI(int currentAmmo, int maxAmmo)
     {
-        Debug.Log("Подключено к Photon Master Server!");
-    }
-
-    public override void OnJoinRandomFailed(short returnCode, string message)
-    {
-        PhotonNetwork.CreateRoom(null, new RoomOptions { MaxPlayers = 4 });
-    }
-
-    public override void OnJoinedRoom()
-    {
-        gameUI.SetActive(true);
-
-        if (!PhotonNetwork.LocalPlayer.CustomProperties.ContainsKey("Score"))
+        if (ammoText != null)
         {
-            ExitGames.Client.Photon.Hashtable playerProperties = new ExitGames.Client.Photon.Hashtable();
-            playerProperties["Score"] = 0;
-            PhotonNetwork.LocalPlayer.SetCustomProperties(playerProperties);
+            ammoText.text = $"Ammo: {currentAmmo}/{maxAmmo}";
         }
     }
 
-
-    private Vector3 GetSpawnPosition()
+    public void OnMultiplayerClicked()
     {
-        return new Vector3(Random.Range(-5, 5), 0, Random.Range(-5, 5));
+        modeSelectionPanel.SetActive(false);
+        MultiplayerManager.Instance.StartMultiplayerGame();
     }
 
     public void OnPlayerDied()
     {
         gameOverPanel.SetActive(true);
-        gameOverText.text = "Вы проиграли!";
-
-        ShowScoreTable(); 
+        gameOverText.text = $"Вы проиграли!\nУничтожено ботов: {enemyKillCount}";
     }
-    void ShowScoreTable()
-    {
-        string scoreText = "Таблица очков:\n";
-
-        foreach (Player player in PhotonNetwork.PlayerList)
-        {
-            int score = player.CustomProperties.ContainsKey("Score") ? (int)player.CustomProperties["Score"] : 0;
-            scoreText += $"{player.NickName}: {score} очков\n";
-        }
-
-        gameOverText.text += "\n" + scoreText;
-    }
-
-
-    private IEnumerator LeaveRoomAfterDelay(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        PhotonNetwork.LeaveRoom();
-    }
-
-    public override void OnLeftRoom()
-    {
-
-        ExitGames.Client.Photon.Hashtable playerProperties = new ExitGames.Client.Photon.Hashtable();
-        playerProperties["TankSpawned"] = false;
-        playerProperties["Score"] = 0; 
-        PhotonNetwork.LocalPlayer.SetCustomProperties(playerProperties);
-
-        gameUI.SetActive(false);
-        gameOverPanel.SetActive(false);
-        mainPanel.SetActive(true);
-    }
-
-
 
     public void OnExitClicked()
     {
@@ -153,7 +86,14 @@ public class GameManager : MonoBehaviourPunCallbacks
         {
             PhotonNetwork.LeaveRoom();
         }
+        else
+        {
+            RestartGame();
+        }
     }
 
-
+    private void RestartGame()
+    {
+        UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+    }
 }

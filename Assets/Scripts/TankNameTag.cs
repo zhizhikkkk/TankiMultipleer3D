@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class TankNameTag : MonoBehaviourPun
 {
-    public TextMeshProUGUI nicknameText; 
+    [SerializeField] private TextMeshProUGUI nicknameText; 
 
     void Start()
     {

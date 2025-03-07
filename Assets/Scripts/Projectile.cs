@@ -6,6 +6,7 @@ public class Projectile : MonoBehaviourPun
     public float speed = 20f;
     public float lifetime = 3f;
     public int damage = 25;
+    public GameObject explosionEffect;
 
     private Vector3 initialPosition;
 
@@ -14,7 +15,7 @@ public class Projectile : MonoBehaviourPun
         initialPosition = transform.position;
         GetComponent<Rigidbody>().velocity = transform.forward * speed;
         Destroy(gameObject, lifetime);
-        Debug.Log($" Пуля запущена. IsMine: {photonView.IsMine}");
+        Debug.Log($"Пуля запущена. IsMine: {photonView.IsMine}");
     }
 
     void FixedUpdate()
@@ -24,28 +25,33 @@ public class Projectile : MonoBehaviourPun
 
     void OnTriggerEnter(Collider other)
     {
-        Debug.Log($" Проверка коллизии с {other.gameObject.name}. IsMine: {photonView.IsMine}");
+        Debug.Log($"Попадание в {other.gameObject.name}. IsMine: {photonView.IsMine}");
 
         PhotonView targetPhotonView = other.GetComponentInParent<PhotonView>();
 
         if (targetPhotonView == null)
         {
-            Debug.Log($" У объекта {other.gameObject.name} и его родителей нет PhotonView!");
+            Debug.Log($"У объекта {other.gameObject.name} нет PhotonView!");
             return;
         }
 
-        Debug.Log($" Найден PhotonView у {other.gameObject.name}, ViewID: {targetPhotonView.ViewID}");
-
         if (other.CompareTag("Tank"))
         {
-           targetPhotonView.RPC("TakeDamageRPC", RpcTarget.AllBuffered, damage, photonView.ViewID);
-            
+            targetPhotonView.RPC("TakeDamageRPC", RpcTarget.AllBuffered, damage, photonView.ViewID);
         }
 
+        if (other.CompareTag("Enemy"))
+        {
+            Transform rootObject = other.transform.root;
+            Destroy(rootObject.gameObject);
+        }
+
+        if (explosionEffect != null)
+        {
+            GameObject explosion = Instantiate(explosionEffect, transform.position, Quaternion.identity);
+            Destroy(explosion, 1f); 
+        }
 
         PhotonNetwork.Destroy(gameObject);
     }
-
-
-
 }

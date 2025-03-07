@@ -4,61 +4,43 @@ using Photon.Pun;
 
 public class TankHealth : MonoBehaviourPun
 {
-    public int maxHealth = 100;
+    [SerializeField] private int maxHealth = 100;
     private int currentHealth;
-    public Slider healthBar;
+    [SerializeField] private Slider healthBar;
 
     void Start()
     {
         currentHealth = maxHealth;
-
-        if (healthBar != null)
-        {
-            healthBar.maxValue = maxHealth;
-            healthBar.value = maxHealth;
-        }
+        UpdateHealthUI();
     }
 
     [PunRPC]
-    public void TakeDamageRPC(int damage, int attackerID)
+    public void TakeDamage(int damage)
     {
         currentHealth -= damage;
         UpdateHealthUI();
-        Debug.Log($" {gameObject.name} получил {damage} урона! Текущее HP: {currentHealth}");
-
         if (currentHealth <= 0)
         {
-            Die(attackerID);
+            Die();
         }
     }
-
+    public void Heal(int amount)
+    {
+        currentHealth = Mathf.Min(currentHealth + amount, maxHealth);
+        UpdateHealthUI();
+        Debug.Log($"Танк восстановил {amount} HP, текущее HP: {currentHealth}");
+    }
     void UpdateHealthUI()
     {
         if (healthBar != null)
         {
-            healthBar.value = currentHealth;
+            healthBar.value = (float)currentHealth / maxHealth;
         }
     }
 
-
-    void Die(int attackerID)
+    void Die()
     {
-        Debug.Log($"Танк {gameObject.name} уничтожен!");
-
-        PhotonView attacker = PhotonView.Find(attackerID);
-        if (attacker != null && attacker.Owner != null)
-        {
-            int currentScore = (int)attacker.Owner.CustomProperties["Score"];
-            ExitGames.Client.Photon.Hashtable newScore = new ExitGames.Client.Photon.Hashtable();
-            newScore["Score"] = currentScore + 10; 
-            attacker.Owner.SetCustomProperties(newScore);
-        }
-
-        if (photonView.IsMine)
-        {
-            GameManager.Instance.OnPlayerDied();
-            PhotonNetwork.Destroy(gameObject);
-        }
+        GameManager.Instance.OnPlayerDied();
+        PhotonNetwork.Destroy(gameObject);
     }
-
 }

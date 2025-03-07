@@ -1,11 +1,12 @@
-using Photon.Pun;
 using UnityEngine;
 using System.Collections;
 
-public class TankSpawner : MonoBehaviourPunCallbacks
+public class TankSpawner : MonoBehaviour
 {
     public static TankSpawner Instance;
-    public GameObject mainPanel;
+
+    public GameObject playerTankPrefab;
+    public GameObject enemyTankPrefab;
 
     void Awake()
     {
@@ -13,72 +14,88 @@ public class TankSpawner : MonoBehaviourPunCallbacks
         else Destroy(gameObject);
     }
 
-    public override void OnJoinedRoom()
+    public void StartGame()
     {
-        mainPanel.SetActive(false);
-        Vector3 spawnPosition = GetValidSpawnPosition();
-
-        if (!PhotonNetwork.LocalPlayer.CustomProperties.ContainsKey("TankSpawned") ||
-            !(bool)PhotonNetwork.LocalPlayer.CustomProperties["TankSpawned"])
-        {
-            GameObject tank = PhotonNetwork.Instantiate("Tank", spawnPosition, Quaternion.identity);
-            StartCoroutine(WaitForOwnershipAndSetColor(tank));
-
-            ExitGames.Client.Photon.Hashtable playerProperties = new ExitGames.Client.Photon.Hashtable();
-            playerProperties["TankSpawned"] = true;
-            PhotonNetwork.LocalPlayer.SetCustomProperties(playerProperties);
-        }
-        else
-        {
-            Debug.LogWarning("Этот игрок уже создал танк, не спавним новый.");
-        }
+        GameManager.Instance.gameUI.SetActive(true);
+        SpawnPlayer();
+        StartCoroutine(SpawnEnemies());
     }
 
-
-
-
-    private IEnumerator WaitForOwnershipAndSetColor(GameObject tank)
+    private void SpawnPlayer()
     {
-        PhotonView tankPhotonView = tank.GetComponent<PhotonView>();
+        Vector3 spawnPosition = new Vector3(0, 10, 0);
+        RaycastHit hit;
 
-        while (tankPhotonView != null && !tankPhotonView.IsMine)
+        if (Physics.Raycast(spawnPosition, Vector3.down, out hit, 20f))
         {
-            yield return null;
+            spawnPosition = hit.point + Vector3.up * 0.1f;
         }
 
-        if (PlayerColorManager.Instance != null)
-        {
-            PlayerColorManager.Instance.AssignUniqueColor(tank);
-        }
-        else
-        {
-            Debug.LogError(" PlayerColorManager.Instance не найден!");
-        }
+        GameObject player = Instantiate(playerTankPrefab, spawnPosition, Quaternion.identity);
     }
 
-    private Vector3 GetValidSpawnPosition()
+    private IEnumerator SpawnEnemies()
     {
-        int maxAttempts = 10;
-        for (int i = 0; i < maxAttempts; i++)
+        int waveSize = 2;
+        int increaseRate = 1;
+        float waveTimer = 20f;
+        float spawnInterval = 5f;
+        float elapsedTime = 0f;
+
+        for (int i = 0; i < waveSize; i++)
         {
-            Vector3 spawnPos = new Vector3(Random.Range(-5, 5), 0, Random.Range(-5, 5));
+            Instantiate(enemyTankPrefab, GetSpawnPositionAroundPlayer(), Quaternion.identity);
+            yield return new WaitForSeconds(1f);
+        }
 
-            Collider[] colliders = Physics.OverlapSphere(spawnPos, 1.5f);
-            bool isSafe = true;
+        while (true)
+        {
+            yield return new WaitForSeconds(spawnInterval);
 
-            foreach (Collider col in colliders)
+            for (int i = 0; i < waveSize; i++)
             {
-                if (col.CompareTag("Wall") || col.CompareTag("Tank"))
-                {
-                    isSafe = false;
-                    break;
-                }
+                Instantiate(enemyTankPrefab, GetSpawnPositionAroundPlayer(), Quaternion.identity);
+                yield return new WaitForSeconds(0.5f);
             }
 
-            if (isSafe) return spawnPos;
+            elapsedTime += spawnInterval;
+            if (elapsedTime >= waveTimer)
+            {
+                waveSize += increaseRate;
+                elapsedTime = 0f;
+            }
+        }
+    }
+
+    private Vector3 GetSpawnPositionAroundPlayer()
+    {
+        GameObject player = GameObject.FindGameObjectWithTag("Tank");
+        if (!player) return GetRandomSpawnPosition();
+
+        Vector3 playerPos = player.transform.position;
+
+        float radius = Random.Range(1f, 10f);
+        float angle = Random.Range(0f, 360f); 
+
+        Vector3 offset = new Vector3(
+            Mathf.Cos(angle * Mathf.Deg2Rad) * radius,
+            10f, 
+            Mathf.Sin(angle * Mathf.Deg2Rad) * radius
+        );
+
+        Vector3 spawnPos = playerPos + offset;
+
+        RaycastHit hit;
+        if (Physics.Raycast(spawnPos, Vector3.down, out hit, 20f))
+        {
+            spawnPos = hit.point + Vector3.up * 0.1f; 
         }
 
-        Debug.LogWarning(" Не удалось найти безопасное место для спавна, используем центр.");
-        return new Vector3(Random.Range(-2, 2), 0, Random.Range(-2, 2));
+        return spawnPos;
+    }
+
+    private Vector3 GetRandomSpawnPosition()
+    {
+        return new Vector3(Random.Range(-10f, 10f), 0, Random.Range(-10f, 10f));
     }
 }
